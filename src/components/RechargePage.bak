@@ -1,0 +1,53 @@
+import React from 'react';
+import { useParams } from 'react-router-dom';
+import packages from '../data/packages.json'; // Ensure the path is correct
+
+function RechargePage() {
+  const { number: enteredNumber, selectedOption: selectedPlan } = useParams();
+
+  const images = {
+    jio: 'image1.jpg',
+    airtel: 'image2.jpg',
+    vi: 'image3.jpg',
+    bsnl: 'image4.jpg',
+  };
+
+  const texts = {
+    jio: 'Text for Plan 1',
+    airtel: 'Text for Plan 2',
+    vi: 'Text for Plan 3',
+    bsnl: 'Text for Plan 4',
+  };
+
+  function makePayment(amount) {
+    alert(`Initiating payment for amount: ${amount}`);
+    // Add your payment handling logic here
+  }
+
+  return (
+    <div>
+      <h2>Recharge for {enteredNumber}</h2>
+      <img src={images[selectedPlan] || 'default.jpg'} alt={`Plan ${selectedPlan}`} />
+      <p>{texts[selectedPlan] || 'Default text for plan'}</p>
+
+      <h3>Recharge Packages</h3>
+      <ul>
+        {packages.map((pkg) => (
+          <li key={pkg.id}>
+            <h4>{pkg.name}</h4>
+            <p>Price: {pkg.discountPrice} (original {pkg.actualPrice})</p>
+            <p>Validity: {pkg.validity}</p>
+            <p>Data: {pkg.data}</p>
+            <p>Voice: {pkg.voice}</p>
+            <p>SMS: {pkg.sms}</p>
+            <button onClick={() => makePayment(pkg.discountPrice)}>
+              Recharge with {pkg.discountPrice}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+export default RechargePage;

