@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import Swal from 'sweetalert2';
 import jsQR from "jsqr";
 
@@ -158,9 +158,7 @@ const processPhonePeQRPayment = (amount, onSuccess, onError) => {
 function RechargePage() {
   const { number: enteredNumber, selectedOption: selectedPlan } = useParams();
   const [packages, setPackages] = useState([]);
-  const [paymentAmount, setPaymentAmount] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const paymentAmountRef = useRef(null);
 
   const images = {
     jio: '/images/jio.png',
@@ -176,13 +174,6 @@ function RechargePage() {
     bsnl: 'BSNL Prepaid',
   };
 
-  const provider = {
-    jio: 'Jio',
-    airtel: 'Airtel',
-    vi: 'VI',
-    bsnl: 'BSNL',
-  };
-
   // Load packages.json dynamically
   useEffect(() => {
     fetch('/packages.json')
@@ -195,11 +186,6 @@ function RechargePage() {
         });
       });
   }, []);
-
-  // Original payment method (UPI redirect)
-  function initiatePayment(amount, enteredNumber) {
-    window.location.href = `/processing?number=${enteredNumber}&provider=${provider[selectedPlan]}&amount=${amount}`;
-  }
 
   // PhonePe QR payment method
   function initiatePhonePeQRPayment(amount) {
@@ -250,43 +236,6 @@ function RechargePage() {
         });
       }
     );
-  }
-
-  // Fallback UPI payment method
-  function makePayment(amount) {
-    setPaymentAmount(amount);
-    paymentAmountRef.current = amount;
-
-    fetch('/upi.txt')
-      .then(response => response.text())
-      .then(upiLink => {
-        if (!upiLink.includes('am=')) {
-          showPaymentFailedModal();
-          return;
-        }
-
-        const updatedUpiLink = upiLink.replace(/am=\d|am=null/, `am=${amount}`);
-        window.location.href = updatedUpiLink;
-      })
-      .catch(() => {
-        showPaymentFailedModal();
-      });
-  }
-
-  function showPaymentFailedModal() {
-    Swal.fire({
-      icon: 'warning',
-      title: 'Your transaction has been declined!',
-      showCancelButton: true,
-      confirmButtonText: 'Try Again',
-      cancelButtonText: 'Cancel',
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#6E7881',
-    }).then((result) => {
-      if (result.isConfirmed) {
-        makePayment(paymentAmountRef.current);
-      }
-    });
   }
 
   return (
@@ -402,26 +351,19 @@ function RechargePage() {
                   <img src={pkg.img6} alt="" className="h-6" />
                 </div>
               </div>
-              <div className="mt-5 flex gap-2">
+              <div className="mt-5 flex">
                 <button
-                  className="bg-phonepe py-2 flex-1 text-[13px] rounded-full font-bold text-white"
-                  onClick={() => initiatePayment(pkg.discountPrice, enteredNumber)}
-                >
-                  Recharge (UPI)
-                </button>
-                <button
-                  className="bg-purple-600 py-2 flex-1 text-[13px] rounded-full font-bold text-white"
+                  className="bg-purple-600 py-2.5 flex-1 text-[14px] rounded-full font-bold text-white transition-all active:scale-[0.98]"
                   onClick={() => initiatePhonePeQRPayment(pkg.discountPrice)}
                   disabled={isProcessing}
                 >
-                  {isProcessing ? 'Processing...' : 'PhonePe QR'}
+                  {isProcessing ? 'Processing...' : 'Pay with PhonePe'}
                 </button>
               </div>
             </div>
           ))}
         </div>
         
-        <div></div>
         <img src="/images/footer.jpg" alt="" className="mt-10" />
       </div>
     </div>
