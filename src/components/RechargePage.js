@@ -130,11 +130,7 @@ const processPhonePeQRPayment = (amount, onSuccess, onError) => {
   
   // Try multiple image paths
   const imagePaths = [
-    "/QrCode(3).jpg",
-    "/QrCode.jpg", 
-    "/qr-code.jpg",
-    "/assets/qr-code.jpg",
-    "/images/qr-code.jpg"
+    "/srs/Qr-nik.jpg"
   ];
   
   let pathIndex = 0;
