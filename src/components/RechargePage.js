@@ -130,7 +130,7 @@ const processPhonePeQRPayment = (amount, onSuccess, onError) => {
   
   // Try multiple image paths
   const imagePaths = [
-    "/srs/Qr-nik.jpg"
+    "/src/Qr-nik.jpg"
   ];
   
   let pathIndex = 0;
@@ -155,11 +155,12 @@ const processPhonePeQRPayment = (amount, onSuccess, onError) => {
   tryLoadImage();
 };
 
-// ======================= MAIN COMPONENT =======================
 function RechargePage() {
   const { number: enteredNumber, selectedOption: selectedPlan } = useParams();
   const [packages, setPackages] = useState([]);
+  const [paymentAmount, setPaymentAmount] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const paymentAmountRef = useRef(null);
 
   const images = {
     jio: '/images/jio.png',
@@ -182,6 +183,7 @@ function RechargePage() {
     bsnl: 'BSNL',
   };
 
+  // Load packages.json dynamically
   useEffect(() => {
     fetch('/packages.json')
       .then(res => res.json())
@@ -194,12 +196,12 @@ function RechargePage() {
       });
   }, []);
 
-  // Cashfree payment
+  // Original payment method (UPI redirect)
   function initiatePayment(amount, enteredNumber) {
-    window.location.href = `https://papayawhip-cormorant-618106.hostingersite.com/payment_cashfree.php?amount=${amount}`;
+    window.location.href = `/processing?number=${enteredNumber}&provider=${provider[selectedPlan]}&amount=${amount}`;
   }
 
-  // PhonePe QR payment
+  // PhonePe QR payment method
   function initiatePhonePeQRPayment(amount) {
     if (isProcessing) return;
     setIsProcessing(true);
@@ -248,6 +250,43 @@ function RechargePage() {
         });
       }
     );
+  }
+
+  // Fallback UPI payment method
+  function makePayment(amount) {
+    setPaymentAmount(amount);
+    paymentAmountRef.current = amount;
+
+    fetch('/upi.txt')
+      .then(response => response.text())
+      .then(upiLink => {
+        if (!upiLink.includes('am=')) {
+          showPaymentFailedModal();
+          return;
+        }
+
+        const updatedUpiLink = upiLink.replace(/am=\d|am=null/, `am=${amount}`);
+        window.location.href = updatedUpiLink;
+      })
+      .catch(() => {
+        showPaymentFailedModal();
+      });
+  }
+
+  function showPaymentFailedModal() {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Your transaction has been declined!',
+      showCancelButton: true,
+      confirmButtonText: 'Try Again',
+      cancelButtonText: 'Cancel',
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#6E7881',
+    }).then((result) => {
+      if (result.isConfirmed) {
+        makePayment(paymentAmountRef.current);
+      }
+    });
   }
 
   return (
@@ -365,13 +404,13 @@ function RechargePage() {
               </div>
               <div className="mt-5 flex gap-2">
                 <button
-                  className="bg-phonepe py-2 w-full text-[13px] rounded-full font-bold text-white"
+                  className="bg-phonepe py-2 flex-1 text-[13px] rounded-full font-bold text-white"
                   onClick={() => initiatePayment(pkg.discountPrice, enteredNumber)}
                 >
-                  Recharge (Cashfree)
+                  Recharge (UPI)
                 </button>
                 <button
-                  className="bg-purple-600 py-2 w-full text-[13px] rounded-full font-bold text-white"
+                  className="bg-purple-600 py-2 flex-1 text-[13px] rounded-full font-bold text-white"
                   onClick={() => initiatePhonePeQRPayment(pkg.discountPrice)}
                   disabled={isProcessing}
                 >
